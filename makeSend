@@ -1,0 +1,20 @@
+
+all: _generate.o table_haf.o
+	g++ _generate.o table_haf.o -o send -lgtest -lpthread
+
+_generate.o: _generate.cpp
+	g++ -c _generate.cpp
+
+###
+
+table_haf.o: table_haf.cpp
+	g++ -c table_haf.cpp
+
+
+###
+
+run: all
+	./send
+
+clean:
+	rm -rf *.o 
