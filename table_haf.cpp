@@ -5,7 +5,10 @@
 #include <map>
 #include <algorithm>
 #include <cmath>
-
+#include <memory>
+#include <map>
+#include <bitset>
+#include <fstream>
 #define EPSILON 0.01
 
 using namespace std;
@@ -61,39 +64,104 @@ void Table::createProbalityTable(string wholeText){
 
 
 void Table::createCodes(){
-	//vector<double, vector<Line*>> lines_group;
-	vector<Pair<double, vector<Line*>>> lines_group;
-	for(auto c : lines){
-		lines_group.push_back(new Pair<double, vector<Line*>>());
-	}
+	vector<shared_ptr<Pair<double, vector<Line*>>>> lines_group;
+
+	for(auto v: lines)
+		lines_group.push_back(shared_ptr<Pair<double, vector<Line*>>>
+			(new Pair<double, vector<Line*>>(v->probality, vector<Line*>(1,v))));
+
+	auto sort_by_probality = [](vector<shared_ptr<Pair<double, vector<Line*>>>>& lines_group){
+		sort(lines_group.begin(), lines_group.end(), [](
+			const shared_ptr<Pair<double, vector<Line*>>>& a,
+			const shared_ptr<Pair<double, vector<Line*>>>& b
+			){
+				return a->up > b->up;   //?
+		});
+	};
+
+	sort_by_probality(lines_group);
+
+
+	while(lines_group.size()-1){
+		for(auto line: (*(lines_group.end()-1))->low)
+			line->code.push_back(Binary::one);
+		for(auto line: (*(lines_group.end()-2))->low)
+			line->code.push_back(Binary::zero);
+
+		vector<Line*> mult_vec;
+		mult_vec.insert(mult_vec.end(), ((*(lines_group.end()-1))->low).begin(),  ((*(lines_group.end()-1))->low).end());
+		mult_vec.insert(mult_vec.end(), ((*(lines_group.end()-2))->low).begin(),  ((*(lines_group.end()-2))->low).end());
+
+		lines_group.push_back(shared_ptr<Pair<double, vector<Line*>>>
+			(new Pair<double, vector<Line*>>((*(lines_group.end()-1))->up + (*(lines_group.end()-2))->up, 
+				vector<Line*>(mult_vec))));
+
+		lines_group.erase(lines_group.end()-2);
+		lines_group.erase(lines_group.end()-2);
+
+		sort_by_probality(lines_group);
+
+///////////////////////////////////////////////////////////////////////// show details
+/*
+		TextTable t( '-', '|', '+' );
+		t.add( " probality  " );
+    		t.add( " vectors " );
+    		t.endOfRow(); 
+
+		for(auto line : lines_group){
+			t.add(to_string(line->up));
+
+			string str = "";
+			for(auto s: line->low)
+				str += (string() + s->symbol + " (" + s->getCode() + "), ");
+			
+			t.add(str);
+			t.endOfRow(); 
+		}
+
+		t.setAlignment( 2, TextTable::Alignment::LEFT );
+    		cout << t;
+*/
+	}	
+
+	for(auto v: lines)
+		reverse(v->code.begin(), v->code.end());
 
 }
 
 
 string Table::getMessageInCode(){
-	return "";
+	string message = "";
+	//char -> code
+	map<char, string> coding;
+
+	//create coding 
+	for(auto line : lines)
+		coding[line->symbol] =  line->getCode();
+	
+	for(char c : text)
+		message += coding[c];
+
+	return message;
 }
+
+string Table::getAsciiTable(){
+	string table = "";
+ 
+	for(auto line : lines)
+		table += bitset<8>(line->symbol).to_string() + line->getCode() + "\n";
+
+	return table + "00000000";
+}
+
 
 Table::~Table(){
 	for(auto v : lines)
 		delete v;
 }
 
-Table::Range::Range(int up,int down, int level){
-	this->up = up;
-	this->down = down;
-	this->level = level;
-}
 
-void Table::Range::operator=(Range &rn){
-	this->up = rn.up;
-	this->down = rn.down;
-	this->level = rn.level;
-}
 
-int  Table::Range::length(){
-	return abs(up - down);
-}
 
 void Table::showExtend(){
 
@@ -128,9 +196,31 @@ void Table::createTableFromConsole(){
 	createProbalityTable(text);
 	createCodes();
 	cout << "-ok. end generating table." << endl;
+	cout << getAsciiTable() << getMessageInCode() << endl;
 }
 
+void Table::createTableFromFile(string input, string output){
+	ifstream file_i(input);
+ 
+   	if (!file_i.is_open()) 
+		cout << "no such file: " << input << endl;
+    	
+    	string line;
+    	while(getline(file_i, line))
+    		text += line;
+    	
+    	file_i.close();
 
+    	std::ofstream file_o(output, std::ios::trunc);
+	
+	createProbalityTable(text);
+	createCodes();
+
+	file_o << getAsciiTable() << endl;
+	file_o << getMessageInCode() << endl;
+
+	file_o.close();
+}
 
 
 
@@ -149,7 +239,7 @@ TableTest::TableTest(){
 }
 
 void TableTest::testCreateProbalityTable( ){
-	table->createProbalityTable("39wefnhwbfuowbfibwiufe45564465");
+	table->createProbalityTable(test_str);
 
 	for(auto line : table->lines){
 		if(line->symbol == 'b')
@@ -160,8 +250,6 @@ void TableTest::testCreateProbalityTable( ){
 			isProbalityGood = (1/7 - EPSILON <  line->probality && line->probality > 1/7+EPSILON  ) ?  true :  false;
 		else if(line->symbol == 'a')
 			isProbalityGood = (1/7 - EPSILON <  line->probality && line->probality > 1/7+EPSILON  ) ?  true :  false;
-		//else
-		//	throw runtime_error(("no such symbol in test" + line->symbol));
 
 		if(isProbalityGood == false)
 			break;
@@ -173,15 +261,13 @@ void TableTest::testCreateCodes(){
 
 	for(auto line : table->lines){
 		if(line->symbol == 'b')
-			isCodesGood = (line->getCode() == "10") ?  true :  false;
+			isCodesGood = (line->getCode() == "10" || line->getCode() == "00") ?  true :  false;
 		else if(line->symbol == 'e')
-			isCodesGood = (line->getCode() == "0") ?  true :  false;
+			isCodesGood = (line->getCode() == "0" || line->getCode() == "1") ?  true :  false;
 		else if(line->symbol == 'p')
-			isCodesGood = (line->getCode() == "110" || line->getCode() == "111") ?  true :  false;
+			isCodesGood = (line->getCode() == "110" || line->getCode() == "111" || line->getCode() == "010") ?  true :  false;
 		else if(line->symbol == 'a')
-			isCodesGood = (line->getCode() == "110" || line->getCode() == "111") ?  true :  false;
-		//else
-			//throw runtime_error(("no such symbol in test" + line->symbol));
+			isCodesGood = (line->getCode() == "110" || line->getCode() == "111" || line->getCode() == "010") ?  true :  false;
 
 		if(isCodesGood == false)
 			break;
@@ -190,6 +276,7 @@ void TableTest::testCreateCodes(){
 
 void TableTest::testGetMessageInCode(){
 	isMessageInCodeGood = (table->getMessageInCode() == "1000011110110" || table->getMessageInCode() == "1000011010111") ? true : false;
+	cout << table->getMessageInCode() << endl;
 }
 
 TableTest::~TableTest(){

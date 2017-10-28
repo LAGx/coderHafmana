@@ -1,33 +1,21 @@
 #include <iostream>
 #include <gtest/gtest.h>
+#include "table_haf.h"
 
 using namespace std;
-/*
-struct Texas{
-	float age;
-
-	Texas(int age = 0){
-		this->age = age;
-	}
-};
-
-struct TexasTest : testing::Test{
-	Texas*  texas = nullptr;
-
-	TexasTest(){
-		texas = new Texas();
-	}
-
-	~TexasTest(){
-		delete texas;
-	}
-}; 
-TEST_F(TexasTest, IsAgeZero){
-	EXPECT_EQ(0, texas->age);
-}
-*/
+#define DEBAG 
 
 int main(int argc, char* argv[]){
-	testing::InitGoogleTest(&argc, argv);
-	return RUN_ALL_TESTS();
+
+	//testing::InitGoogleTest(&argc, argv);
+	//return RUN_ALL_TESTS();
+
+	Table t;
+	t.createTableFromFile();
+#if DEBAG
+	t.showExtend();
+#endif
+	
+	return 0;
+
 }

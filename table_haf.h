@@ -5,12 +5,14 @@
 
 using namespace std;
 
-template <class F, S >
+template <class F, class S >
 class Pair{
-	Pair
+public:
+	Pair(F _up, S _low): up(_up), low(_low)
+		{}
 	F up; 
 	S low;
-}
+};
 
 enum Binary{
 	zero,
@@ -40,17 +42,18 @@ private:
 
 	void createProbalityTable(string wholeText);
 
-	void createCodes();//TODO must
+	void createCodes();
 
-	string getMessageInCode();//TODO must
+	string getMessageInCode();
+
+	string getAsciiTable();	/// [ascii code][code symbol]\n
+				/// 00000000\n - end of table
 
 public:
 
 	void showExtend();
 
-	void generateFile(string fileName = "message.haf");//TODO must
-
-	void createTableFromFile(string fileName = "message.txt");//TODO must
+	void createTableFromFile(string input = "message.txt", string output = "message.haf");
 
 	void createTableFromConsole();
 

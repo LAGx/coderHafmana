@@ -1,0 +1,18 @@
+all: _read.o decoder.o
+	g++ _read.o decoder.o -o decode -lgtest -lpthread
+
+_read.o: _read.cpp
+	g++ -c _read.cpp
+
+###
+
+decoder.o: decoder.cpp decoder.h
+	g++ -c decoder.cpp
+
+###
+
+run: all
+	./decode
+
+clean:
+	rm -rf *.o 
